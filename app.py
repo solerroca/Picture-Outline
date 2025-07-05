@@ -281,14 +281,6 @@ def main():
         help="Drag and drop an image file here or click to browse"
     )
     
-    # Alternative: Image from clipboard
-    st.sidebar.markdown("**Or paste from clipboard:**")
-    clipboard_data = st.sidebar.text_area(
-        "Paste image data (base64)",
-        help="Right-click an image and 'Copy image', then paste the base64 data here",
-        height=100
-    )
-    
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
     
     # Image loading
@@ -420,7 +412,7 @@ def main():
                                  help="Upper edge detection threshold")
         
         with col3:
-            line_thickness = st.slider("Line Thickness", 1, 5, 1,
+            line_thickness = st.slider("Line Thickness", 1, 5, 3,
                                      help="Make outline lines thicker")
             invert = st.checkbox("Invert (Black lines on white)", value=True,
                                help="Recommended for printing")
@@ -489,8 +481,6 @@ def main():
             <p>Supported formats: PNG, JPG, JPEG, BMP, TIFF</p>
         </div>
         """, unsafe_allow_html=True)
-    
-
     
     # Footer
     st.markdown("---")
