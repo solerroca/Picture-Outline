@@ -65,18 +65,14 @@ st.markdown("""
         background-color: #4CAF50;
         color: white;
         border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
         cursor: pointer;
         font-size: 16px;
-        font-weight: 600;
-        transition: all 0.3s ease;
     }
     
     .stButton > button:hover {
         background-color: #45a049;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     
     .metric-card {
@@ -304,6 +300,20 @@ def main():
             h, w, c = st.session_state.processor.original_image.shape
             st.sidebar.info(f"📏 Image dimensions: {w} x {h} pixels")
             
+            # Initialize processing parameters in session state if not present
+            if 'last_method' not in st.session_state:
+                st.session_state.last_method = None
+            if 'last_blur_kernel' not in st.session_state:
+                st.session_state.last_blur_kernel = None
+            if 'last_threshold1' not in st.session_state:
+                st.session_state.last_threshold1 = None
+            if 'last_threshold2' not in st.session_state:
+                st.session_state.last_threshold2 = None
+            if 'last_line_thickness' not in st.session_state:
+                st.session_state.last_line_thickness = None
+            if 'last_invert' not in st.session_state:
+                st.session_state.last_invert = None
+            
             # Print Settings in sidebar - only show when outline is generated
             if st.session_state.processor.processed_image is not None:
                 st.sidebar.markdown('<div class="processing-section">', unsafe_allow_html=True)
@@ -380,6 +390,14 @@ def main():
         # Processing options section on main page
         st.markdown('<div class="processing-section">', unsafe_allow_html=True)
         st.subheader("⚙️ Processing Options")
+        st.markdown("*Outline updates automatically as you adjust the settings below*")
+        
+        # Add a subtle indicator that auto-processing is active
+        st.markdown("""
+        <div style="background-color: #e8f4f8; padding: 0.5rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #4CAF50;">
+            <small>🔄 Auto-processing enabled - Changes apply instantly</small>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Create columns for better layout of processing options
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -407,24 +425,39 @@ def main():
             invert = st.checkbox("Invert (Black lines on white)", value=True,
                                help="Recommended for printing")
         
-        # Generate outline button - prominent and centered
-        col_center = st.columns([1, 2, 1])
-        with col_center[1]:
-            if st.button("🔄 Generate Outline", type="primary", use_container_width=True):
-                with st.spinner("Processing image..."):
-                    outline = st.session_state.processor.create_outline(
-                        method=method,
-                        blur_kernel=blur_kernel,
-                        threshold1=threshold1,
-                        threshold2=threshold2,
-                        line_thickness=line_thickness,
-                        invert=invert
-                    )
-                    
-                    if outline is not None:
-                        st.success("✅ Outline generated successfully!")
-                    else:
-                        st.error("❌ Error generating outline")
+        # Check if parameters have changed or if this is the first time processing
+        parameters_changed = (
+            st.session_state.last_method != method or
+            st.session_state.last_blur_kernel != blur_kernel or
+            st.session_state.last_threshold1 != threshold1 or
+            st.session_state.last_threshold2 != threshold2 or
+            st.session_state.last_line_thickness != line_thickness or
+            st.session_state.last_invert != invert or
+            st.session_state.processor.processed_image is None
+        )
+        
+        # Auto-generate outline if parameters changed
+        if parameters_changed:
+            with st.spinner("🔄 Generating outline..."):
+                outline = st.session_state.processor.create_outline(
+                    method=method,
+                    blur_kernel=blur_kernel,
+                    threshold1=threshold1,
+                    threshold2=threshold2,
+                    line_thickness=line_thickness,
+                    invert=invert
+                )
+                
+                if outline is not None:
+                    # Update session state with current parameters
+                    st.session_state.last_method = method
+                    st.session_state.last_blur_kernel = blur_kernel
+                    st.session_state.last_threshold1 = threshold1
+                    st.session_state.last_threshold2 = threshold2
+                    st.session_state.last_line_thickness = line_thickness
+                    st.session_state.last_invert = invert
+                else:
+                    st.error("❌ Error generating outline")
         
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -446,7 +479,7 @@ def main():
                         caption="Generated Outline", use_container_width=True)
             else:
                 st.markdown("### Generated Outline")
-                st.info("👆 Click 'Generate Outline' above to process the image")
+                st.info("👆 Adjust the processing options above to generate the outline")
     
     else:
         # Show upload instructions when no image is loaded
