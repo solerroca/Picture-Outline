@@ -266,70 +266,59 @@ def main():
     if 'processor' not in st.session_state:
         st.session_state.processor = ImageProcessor()
     
-    # Sidebar with controls
+    # Sidebar with all controls
     st.sidebar.header("🎛️ Settings")
     
-    # Main content area
-    col1, col2 = st.columns([1, 1])
+    # Upload section in sidebar
+    st.sidebar.markdown('<div class="upload-section">', unsafe_allow_html=True)
+    st.sidebar.subheader("📤 Upload Image")
     
-    with col1:
-        st.markdown('<div class="upload-section">', unsafe_allow_html=True)
-        st.subheader("📤 Upload Image")
-        
-        # File upload
-        uploaded_file = st.file_uploader(
-            "Choose an image file",
-            type=['png', 'jpg', 'jpeg', 'bmp', 'tiff'],
-            help="Drag and drop an image file here or click to browse"
-        )
-        
-        # Alternative: Image from clipboard
-        st.markdown("**Or paste from clipboard:**")
-        clipboard_data = st.text_area(
-            "Paste image data (base64)",
-            help="Right-click an image and 'Copy image', then paste the base64 data here",
-            height=100
-        )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        if uploaded_file is not None:
-            if st.session_state.processor.load_image(uploaded_file):
-                st.success("✅ Image loaded successfully!")
-                
-                # Display original image
-                st.subheader("Original Image")
-                st.image(st.session_state.processor.original_image, 
-                        caption="Original Image", use_column_width=True)
-                
-                # Image info
-                h, w, c = st.session_state.processor.original_image.shape
-                st.info(f"📏 Image dimensions: {w} x {h} pixels")
+    # File upload
+    uploaded_file = st.sidebar.file_uploader(
+        "Choose an image file",
+        type=['png', 'jpg', 'jpeg', 'bmp', 'tiff'],
+        help="Drag and drop an image file here or click to browse"
+    )
     
-    with col2:
-        if st.session_state.processor.original_image is not None:
-            st.markdown('<div class="processing-section">', unsafe_allow_html=True)
-            st.subheader("⚙️ Processing Options")
+    # Alternative: Image from clipboard
+    st.sidebar.markdown("**Or paste from clipboard:**")
+    clipboard_data = st.sidebar.text_area(
+        "Paste image data (base64)",
+        help="Right-click an image and 'Copy image', then paste the base64 data here",
+        height=100
+    )
+    
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+    
+    # Image loading
+    if uploaded_file is not None:
+        if st.session_state.processor.load_image(uploaded_file):
+            st.sidebar.success("✅ Image loaded successfully!")
+            
+            # Image info in sidebar
+            h, w, c = st.session_state.processor.original_image.shape
+            st.sidebar.info(f"📏 Image dimensions: {w} x {h} pixels")
+            
+            # Processing options in sidebar
+            st.sidebar.markdown('<div class="processing-section">', unsafe_allow_html=True)
+            st.sidebar.subheader("⚙️ Processing Options")
             
             # Processing parameters
-            method = st.selectbox(
+            method = st.sidebar.selectbox(
                 "Edge Detection Method",
                 ['canny', 'sobel', 'laplacian', 'adaptive'],
                 help="Choose the edge detection algorithm"
             )
             
-            col2a, col2b = st.columns(2)
-            with col2a:
-                blur_kernel = st.slider("Blur Kernel", 1, 15, 5, step=2)
-                threshold1 = st.slider("Threshold 1", 10, 200, 50)
-            with col2b:
-                threshold2 = st.slider("Threshold 2", 50, 300, 150)
-                line_thickness = st.slider("Line Thickness", 1, 5, 1)
+            blur_kernel = st.sidebar.slider("Blur Kernel", 1, 15, 5, step=2)
+            threshold1 = st.sidebar.slider("Threshold 1", 10, 200, 50)
+            threshold2 = st.sidebar.slider("Threshold 2", 50, 300, 150)
+            line_thickness = st.sidebar.slider("Line Thickness", 1, 5, 1)
             
-            invert = st.checkbox("Invert (Black lines on white)", value=True)
+            invert = st.sidebar.checkbox("Invert (Black lines on white)", value=True)
             
             # Process button
-            if st.button("🔄 Generate Outline", type="primary"):
+            if st.sidebar.button("🔄 Generate Outline", type="primary"):
                 with st.spinner("Processing image..."):
                     outline = st.session_state.processor.create_outline(
                         method=method,
@@ -341,95 +330,114 @@ def main():
                     )
                     
                     if outline is not None:
-                        st.success("✅ Outline generated successfully!")
+                        st.sidebar.success("✅ Outline generated successfully!")
                     else:
-                        st.error("❌ Error generating outline")
+                        st.sidebar.error("❌ Error generating outline")
             
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Display processed image
-    if st.session_state.processor.processed_image is not None:
-        st.markdown('<div class="processing-section">', unsafe_allow_html=True)
-        st.subheader("🎨 Generated Outline")
-        
-        col3, col4 = st.columns([2, 1])
-        
-        with col3:
-            st.image(st.session_state.processor.processed_image, 
-                    caption="Generated Outline", use_column_width=True)
-        
-        with col4:
-            st.subheader("📏 Print Settings")
+            st.sidebar.markdown('</div>', unsafe_allow_html=True)
             
-            # Size options
-            size_option = st.selectbox(
-                "Output Size",
-                ['Letter', 'A4', 'Legal', 'A3', 'Custom'],
-                help="Choose the output size for printing"
-            )
-            
-            if size_option == 'Custom':
-                custom_width = st.number_input("Width (mm)", min_value=50, max_value=500, value=210)
-                custom_height = st.number_input("Height (mm)", min_value=50, max_value=500, value=297)
-            else:
-                custom_width = custom_height = None
-            
-            dpi = st.selectbox("Print Quality (DPI)", [150, 300, 600], index=1)
-            
-            # Resize for print
-            print_image = st.session_state.processor.resize_for_print(
-                size_option, custom_width, custom_height, dpi
-            )
-            
-            if print_image is not None:
-                st.info(f"📐 Print size: {print_image.shape[1]} x {print_image.shape[0]} pixels")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Download section
-        st.markdown('<div class="download-section">', unsafe_allow_html=True)
-        st.subheader("💾 Download Options")
-        
-        col5, col6 = st.columns(2)
-        
-        with col5:
-            # PNG download
-            if st.button("📥 Download PNG", type="secondary"):
-                img_to_download = print_image if print_image is not None else st.session_state.processor.processed_image
-                pil_image = Image.fromarray(img_to_download)
+            # Print Settings in sidebar - only show when outline is generated
+            if st.session_state.processor.processed_image is not None:
+                st.sidebar.markdown('<div class="processing-section">', unsafe_allow_html=True)
+                st.sidebar.subheader("📏 Print Settings")
                 
-                # Convert to bytes
-                img_bytes = io.BytesIO()
-                pil_image.save(img_bytes, format='PNG')
-                img_bytes.seek(0)
-                
-                st.download_button(
-                    label="💾 Download PNG File",
-                    data=img_bytes.getvalue(),
-                    file_name=f"outline_{size_option.lower()}.png",
-                    mime="image/png"
+                # Size options
+                size_option = st.sidebar.selectbox(
+                    "Output Size",
+                    ['Letter', 'A4', 'Legal', 'A3', 'Custom'],
+                    help="Choose the output size for printing"
                 )
-        
-        with col6:
-            # PDF download
-            if st.button("📄 Download PDF", type="secondary"):
-                img_to_download = print_image if print_image is not None else st.session_state.processor.processed_image
                 
-                with st.spinner("Creating PDF..."):
-                    pdf_path = create_pdf(img_to_download, size_option)
+                if size_option == 'Custom':
+                    custom_width = st.sidebar.number_input("Width (mm)", min_value=50, max_value=500, value=210)
+                    custom_height = st.sidebar.number_input("Height (mm)", min_value=50, max_value=500, value=297)
+                else:
+                    custom_width = custom_height = None
+                
+                dpi = st.sidebar.selectbox("Print Quality (DPI)", [150, 300, 600], index=1)
+                
+                # Resize for print
+                print_image = st.session_state.processor.resize_for_print(
+                    size_option, custom_width, custom_height, dpi
+                )
+                
+                if print_image is not None:
+                    st.sidebar.info(f"📐 Print size: {print_image.shape[1]} x {print_image.shape[0]} pixels")
+                
+                st.sidebar.markdown('</div>', unsafe_allow_html=True)
+                
+                # Download section in sidebar
+                st.sidebar.markdown('<div class="download-section">', unsafe_allow_html=True)
+                st.sidebar.subheader("💾 Download Options")
+                
+                # PNG download
+                if st.sidebar.button("📥 Download PNG", type="secondary"):
+                    img_to_download = print_image if print_image is not None else st.session_state.processor.processed_image
+                    pil_image = Image.fromarray(img_to_download)
                     
-                    with open(pdf_path, 'rb') as pdf_file:
-                        st.download_button(
-                            label="📄 Download PDF File",
-                            data=pdf_file.read(),
-                            file_name=f"outline_{size_option.lower()}.pdf",
-                            mime="application/pdf"
-                        )
+                    # Convert to bytes
+                    img_bytes = io.BytesIO()
+                    pil_image.save(img_bytes, format='PNG')
+                    img_bytes.seek(0)
                     
-                    # Clean up
-                    os.unlink(pdf_path)
+                    st.sidebar.download_button(
+                        label="💾 Download PNG File",
+                        data=img_bytes.getvalue(),
+                        file_name=f"outline_{size_option.lower()}.png",
+                        mime="image/png"
+                    )
+                
+                # PDF download
+                if st.sidebar.button("📄 Download PDF", type="secondary"):
+                    img_to_download = print_image if print_image is not None else st.session_state.processor.processed_image
+                    
+                    with st.spinner("Creating PDF..."):
+                        pdf_path = create_pdf(img_to_download, size_option)
+                        
+                        with open(pdf_path, 'rb') as pdf_file:
+                            st.sidebar.download_button(
+                                label="📄 Download PDF File",
+                                data=pdf_file.read(),
+                                file_name=f"outline_{size_option.lower()}.pdf",
+                                mime="application/pdf"
+                            )
+                        
+                        # Clean up
+                        os.unlink(pdf_path)
+                
+                st.sidebar.markdown('</div>', unsafe_allow_html=True)
+    
+    # Main content area - Side-by-side image comparison
+    if st.session_state.processor.original_image is not None:
+        st.subheader("🖼️ Image Comparison")
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Create two columns for side-by-side comparison
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.markdown("### Original Image")
+            st.image(st.session_state.processor.original_image, 
+                    caption="Original Image", use_container_width=True)
+        
+        with col2:
+            if st.session_state.processor.processed_image is not None:
+                st.markdown("### Generated Outline")
+                st.image(st.session_state.processor.processed_image, 
+                        caption="Generated Outline", use_container_width=True)
+            else:
+                st.markdown("### Generated Outline")
+                st.info("👆 Click 'Generate Outline' in the sidebar to process the image")
+    
+    else:
+        # Show upload instructions when no image is loaded
+        st.markdown("""
+        <div style="text-align: center; padding: 3rem 0; color: #666;">
+            <h3>👈 Upload an image using the sidebar to get started</h3>
+            <p>Supported formats: PNG, JPG, JPEG, BMP, TIFF</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+
     
     # Footer
     st.markdown("---")
