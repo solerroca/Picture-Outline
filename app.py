@@ -281,12 +281,112 @@ def main():
         help="Drag and drop an image file here or click to browse"
     )
     
+    # Separator
+    st.sidebar.markdown("**OR**")
+    
+    # Clipboard/Screenshot paste section
+    st.sidebar.markdown("**📋 Paste Screenshot/Image:**")
+    
+    # Instructions for pasting
+    st.sidebar.markdown("""
+    <div style="background-color: #f0f4f8; padding: 0.5rem; border-radius: 5px; margin-bottom: 0.5rem; font-size: 0.8rem;">
+        <strong>How to paste screenshots:</strong><br/>
+        1️⃣ Take a screenshot (Cmd+Shift+4 on Mac, Windows+Shift+S on PC)<br/>
+        2️⃣ Right-click in the box below and select "Paste"<br/>
+        3️⃣ Or paste with Ctrl/Cmd+V
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Text area for pasting image data
+    clipboard_data = st.sidebar.text_area(
+        "Paste your screenshot here:",
+        height=100,
+        help="Paste an image from your clipboard. Most browsers will convert it to base64 data automatically.",
+        placeholder="Right-click and paste your screenshot here..."
+    )
+    
+    # Button to process clipboard data
+    if clipboard_data and st.sidebar.button("📋 Use Pasted Image", type="primary"):
+        try:
+            # Handle different formats of pasted data
+            image_data = clipboard_data.strip()
+            
+            # Remove data URL prefix if present
+            if image_data.startswith('data:image'):
+                # Extract base64 part after comma
+                image_data = image_data.split(',', 1)[1]
+            
+            # Decode base64 image
+            image_bytes = base64.b64decode(image_data)
+            
+            # Create a file-like object
+            image_file = io.BytesIO(image_bytes)
+            
+            # Clear previous images and reset processor
+            st.session_state.processor.original_image = None
+            st.session_state.processor.processed_image = None
+            
+            # Reset processing parameters to force regeneration
+            st.session_state.last_method = None
+            st.session_state.last_blur_kernel = None
+            st.session_state.last_threshold1 = None
+            st.session_state.last_threshold2 = None
+            st.session_state.last_line_thickness = None
+            st.session_state.last_invert = None
+            
+            # Update current file name to indicate pasted image and set paste flag
+            st.session_state.current_file_name = "pasted_image"
+            st.session_state.image_from_paste = True
+            
+            # Load the pasted image
+            if st.session_state.processor.load_image(image_file):
+                st.sidebar.success("✅ Pasted image loaded successfully!")
+            else:
+                st.sidebar.error("❌ Failed to load pasted image")
+                
+        except Exception as e:
+            st.sidebar.error(f"❌ Error processing pasted image: {str(e)}")
+            st.sidebar.info("💡 Try copying the image again or use the file upload instead")
+    
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
+    
+    # Track current uploaded file to detect changes
+    if 'current_file_name' not in st.session_state:
+        st.session_state.current_file_name = None
+    
+    # Track if image was loaded from paste
+    if 'image_from_paste' not in st.session_state:
+        st.session_state.image_from_paste = False
     
     # Image loading
     if uploaded_file is not None:
+        # Check if this is a new file (different from previous) or switching from paste
+        new_file_uploaded = (
+            st.session_state.current_file_name != uploaded_file.name or
+            st.session_state.processor.original_image is None or
+            st.session_state.image_from_paste
+        )
+        
+        if new_file_uploaded:
+            # Clear previous images and reset processor
+            st.session_state.processor.original_image = None
+            st.session_state.processor.processed_image = None
+            
+            # Reset processing parameters to force regeneration
+            st.session_state.last_method = None
+            st.session_state.last_blur_kernel = None
+            st.session_state.last_threshold1 = None
+            st.session_state.last_threshold2 = None
+            st.session_state.last_line_thickness = None
+            st.session_state.last_invert = None
+            
+            # Update current file name and reset paste flag
+            st.session_state.current_file_name = uploaded_file.name
+            st.session_state.image_from_paste = False
+        
         if st.session_state.processor.load_image(uploaded_file):
-            st.sidebar.success("✅ Image loaded successfully!")
+            if new_file_uploaded:
+                st.sidebar.success("✅ New image loaded successfully!")
             
             # Image info in sidebar
             h, w, c = st.session_state.processor.original_image.shape
@@ -305,6 +405,12 @@ def main():
                 st.session_state.last_line_thickness = None
             if 'last_invert' not in st.session_state:
                 st.session_state.last_invert = None
+    else:
+        # No file uploaded, clear current file name if not from paste
+        if st.session_state.current_file_name is not None and not st.session_state.image_from_paste:
+            st.session_state.current_file_name = None
+            st.session_state.processor.original_image = None
+            st.session_state.processor.processed_image = None
             
             # Print Settings in sidebar - only show when outline is generated
             if st.session_state.processor.processed_image is not None:
