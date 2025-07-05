@@ -15,7 +15,6 @@ from skimage import filters, feature, morphology, color
 from scipy import ndimage
 import plotly.graph_objects as go
 import plotly.express as px
-from clipboard_image import clipboard_image
 
 # Set page configuration
 st.set_page_config(
@@ -143,6 +142,8 @@ st.markdown("""
         border: 1px solid #b3d9ff;
         margin: 1rem 0;
     }
+    
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -311,6 +312,8 @@ def create_pdf(image_array, size_option='Letter', filename='outline.pdf'):
     
     return temp_path
 
+
+
 def main():
     # Header
     st.markdown("""
@@ -349,42 +352,60 @@ def main():
     <div style="background-color: #e8f5e8; padding: 0.5rem; border-radius: 5px; margin-bottom: 0.5rem; font-size: 0.8rem;">
         <strong>How to paste screenshots:</strong><br/>
         1️⃣ Take a screenshot (Cmd+Shift+4 on Mac, Windows+Shift+S on PC)<br/>
-        2️⃣ Click in the paste area below<br/>
-        3️⃣ Press Ctrl+V (or Cmd+V on Mac) to paste directly!<br/>
+        2️⃣ Paste the base64 data below<br/>
+        3️⃣ The image will be processed automatically<br/>
     </div>
     """, unsafe_allow_html=True)
 
-    # === CLIPBOARD COMPONENT ===
-    paste_payload = clipboard_image(key="clip_img")
+    # Fallback text area for base64 input
+    base64_input = st.sidebar.text_area(
+        "Paste base64 image data here:",
+        height=100,
+        placeholder="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+        help="You can paste base64 encoded image data here. Take a screenshot, convert to base64, and paste."
+    )
+    
+    # Process base64 input if provided
+    if base64_input and base64_input.strip():
+        if base64_input.startswith("data:image"):
+            try:
+                # Extract the actual base64 data
+                base64_data = base64_input.split(",", 1)[1]
+                img_bytes = base64.b64decode(base64_data)
+                img_file = io.BytesIO(img_bytes)
+                
+                # Reset state
+                st.session_state.processor.original_image = None
+                st.session_state.processor.processed_image = None
+                st.session_state.last_method = None
+                st.session_state.last_blur_kernel = None
+                st.session_state.last_threshold1 = None
+                st.session_state.last_threshold2 = None
+                st.session_state.last_line_thickness = None
+                st.session_state.last_invert = None
+                st.session_state.current_file_name = "pasted_screenshot"
 
-    if paste_payload and isinstance(paste_payload, dict):
-        base64_str = paste_payload.get("data")
-        ts = paste_payload.get("ts")
-        if base64_str and base64_str.startswith("data:image"):
-            if "last_paste_ts" not in st.session_state or st.session_state.last_paste_ts != ts:
-                st.session_state.last_paste_ts = ts
-                try:
-                    img_bytes = base64.b64decode(base64_str.split(",", 1)[1])
-                    img_file = io.BytesIO(img_bytes)
-                    # Reset state
-                    st.session_state.processor.original_image = None
-                    st.session_state.processor.processed_image = None
-                    st.session_state.last_method = None
-                    st.session_state.last_blur_kernel = None
-                    st.session_state.last_threshold1 = None
-                    st.session_state.last_threshold2 = None
-                    st.session_state.last_line_thickness = None
-                    st.session_state.last_invert = None
-                    st.session_state.current_file_name = "pasted_screenshot"
-
-                    if st.session_state.processor.load_image(img_file):
-                        st.sidebar.success("✅ Screenshot pasted and loaded successfully!")
-                        st.rerun()
-                    else:
-                        st.sidebar.error("❌ Failed to load pasted screenshot")
-                except Exception as ex:
-                    st.sidebar.error(f"❌ Error decoding pasted image: {ex}")
-    # === END CLIPBOARD COMPONENT ===
+                if st.session_state.processor.load_image(img_file):
+                    st.sidebar.success("✅ Image loaded from base64 data!")
+                else:
+                    st.sidebar.error("❌ Failed to load image from base64 data")
+            except Exception as ex:
+                st.sidebar.error(f"❌ Error decoding base64 image: {ex}")
+        else:
+            st.sidebar.warning("⚠️ Please paste valid base64 image data starting with 'data:image'")
+    
+    # Additional helper for users
+    if st.sidebar.button("ℹ️ How to get base64 from screenshot"):
+        st.sidebar.markdown("""
+        <div style="background-color: #f0f8f0; padding: 0.5rem; border-radius: 5px; margin-top: 0.5rem; font-size: 0.8rem;">
+            <strong>To convert screenshot to base64:</strong><br/>
+            1. Take a screenshot<br/>
+            2. Go to <a href="https://www.base64-image.de/" target="_blank">base64-image.de</a><br/>
+            3. Upload your screenshot<br/>
+            4. Copy the generated base64 string<br/>
+            5. Paste it in the text area above
+        </div>
+        """, unsafe_allow_html=True)
     
     # Track current uploaded file to detect changes
     if 'current_file_name' not in st.session_state:
